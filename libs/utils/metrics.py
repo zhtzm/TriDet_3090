@@ -118,8 +118,10 @@ class ANETdetection(object):
             label_offset=0,
             num_workers=8,
             dataset_name=None,
+            target_class_list=None,
     ):
 
+        self.target_class_list = target_class_list
         self.tiou_thresholds = tiou_thresholds
         self.ap = None
         self.num_workers = num_workers
@@ -203,6 +205,8 @@ class ANETdetection(object):
 
         # compute mAP
         self.ap = self.wrapper_compute_average_precision(preds)
+        if self.target_class_list != None:
+            self.ap = self.ap[:,list(self.target_class_list)]
         mAP = self.ap.mean(axis=1)
         average_mAP = mAP.mean()
 

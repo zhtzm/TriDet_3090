@@ -6,7 +6,7 @@ dataset: {
   feat_folder: ./data/anet_1.3/tsp_features,
   file_prefix: v_,
   file_ext: .npy,
-  num_classes: 1,
+  num_classes: 200,
   input_dim: 512,
   feat_stride: 16,
   num_frames: 16,
