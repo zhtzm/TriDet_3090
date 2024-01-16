@@ -2,7 +2,7 @@ import torch
 from torch import nn
 from torch.nn import functional as F
 
-from .blocks import (get_sinusoid_encoding, MaskedConv1D, ConvBlock, LayerNorm, SGPBlock)
+from .blocks import (get_sinusoid_encoding, MaskedConv1D, ConvBlock, LayerNorm, SGPBlock, TransformerBlock)
 from .models import register_backbone
 
 

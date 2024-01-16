@@ -458,9 +458,10 @@ def sub_valid_one_epoch(
         
         # whether consider this video (SmD and CrD)
         flag = True
-        for l in video_list[0]['labels']:
-            if int(l) not in target_class_list:
-                flag = False
+        if target_class_list!=None:
+            for l in video_list[0]['labels']:
+                if int(l) not in target_class_list:
+                    flag = False
         if not flag:
             continue
         tot += 1
@@ -508,7 +509,7 @@ def sub_valid_one_epoch(
     results['score'] = torch.cat(results['score']).numpy()
 
     if evaluator is not None:
-        if (ext_score_file is not None) and isinstance(ext_score_file, str):
+        if (ext_score_file is not None) and isinstance(ext_score_file, str): # 这里我们不使用ext_score_file
             results = postprocess_results(results, ext_score_file)
         # call the evaluator
         _, mAP = evaluator.evaluate(results, verbose=True)

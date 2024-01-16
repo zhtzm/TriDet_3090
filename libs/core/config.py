@@ -50,6 +50,14 @@ DEFAULTS = {
         "regression_range": [(0, 4), (4, 8), (8, 16), (16, 32), (32, 64), (64, 10000)],
         # window size for self attention; <=1 to use full seq (ie global attention)
         "n_sgp_win_size": -1,
+        ###########################
+        # for aformer only
+        "n_head": 4,
+        "n_mha_win_size": -1,
+        "fpn_start_level": 0,
+        # use rel position encoding (added to self-attention)
+        "use_rel_pe": False,
+        ###########################
         # kernel size for embedding network
         "embd_kernel_size": 3,
         # (output) feature dim for embedding network

@@ -1,4 +1,4 @@
-CUDA_VISIBLE_DEVICES=$1 python crd_eval.py ./configs/thumos_i3d.yaml ckpt/thumos_i3d_pretrained/epoch_039.pth.tar t2a class_mapping/t2a_class_mapping.json ./configs/anet_i3d.yaml
+python crd_eval.py ./configs/thumos_i3d.yaml ckpt/thumos_i3d_tridet/epoch_039.pth.tar t2a class_mapping/t2a_class_mapping.json ./configs/anet_i3d.yaml
 
 << results
 SmD:
@@ -10,26 +10,14 @@ SmD:
 |tIoU = 0.60: mAP = 80.11 (%)
 |tIoU = 0.70: mAP = 66.70 (%)
 Avearge mAP: 85.83 (%)
-|tIoU = 0.50: mAP = 19.68 (%)
-|tIoU = 0.55: mAP = 17.96 (%)
-|tIoU = 0.60: mAP = 15.17 (%)
-|tIoU = 0.65: mAP = 12.81 (%)
-|tIoU = 0.70: mAP = 9.80 (%)
-|tIoU = 0.75: mAP = 7.06 (%)
-|tIoU = 0.80: mAP = 3.63 (%)
-|tIoU = 0.85: mAP = 1.45 (%)
-|tIoU = 0.90: mAP = 0.95 (%)
-|tIoU = 0.95: mAP = 0.55 (%)
-Avearge mAP: 8.91 (%)
-CrD:
-|tIoU = 0.50: mAP = 19.68 (%)
-|tIoU = 0.55: mAP = 17.96 (%)
-|tIoU = 0.60: mAP = 15.17 (%)
-|tIoU = 0.65: mAP = 12.81 (%)
-|tIoU = 0.70: mAP = 9.80 (%)
-|tIoU = 0.75: mAP = 7.06 (%)
-|tIoU = 0.80: mAP = 3.63 (%)
-|tIoU = 0.85: mAP = 1.45 (%)
-|tIoU = 0.90: mAP = 0.95 (%)
-|tIoU = 0.95: mAP = 0.55 (%)
-Avearge mAP: 8.91 (%)
+|tIoU = 0.50: mAP = 18.37 (%)
+|tIoU = 0.55: mAP = 16.73 (%)
+|tIoU = 0.60: mAP = 14.34 (%)
+|tIoU = 0.65: mAP = 13.27 (%)
+|tIoU = 0.70: mAP = 10.43 (%)
+|tIoU = 0.75: mAP = 8.15 (%)
+|tIoU = 0.80: mAP = 4.83 (%)
+|tIoU = 0.85: mAP = 2.34 (%)
+|tIoU = 0.90: mAP = 1.45 (%)
+|tIoU = 0.95: mAP = 0.77 (%)
+Avearge mAP: 9.07 (%)

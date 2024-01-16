@@ -206,7 +206,8 @@ class TriDet(nn.Module):
             use_trident_head,  # if use the Trident-head
             num_classes,  # number of action classes
             train_cfg,  # other cfg for training
-            test_cfg  # other cfg for testing
+            test_cfg,  # other cfg for testing
+            **args,
     ):
         super().__init__()
         # re-distribute params to backbone / neck / head
@@ -1114,7 +1115,8 @@ class PtTransformer(nn.Module):
         use_rel_pe,            # if to use rel position encoding
         num_classes,           # number of action classes
         train_cfg,             # other cfg for training
-        test_cfg               # other cfg for testing
+        test_cfg,               # other cfg for testing
+        **args,
     ):
         super().__init__()
          # re-distribute params to backbone / neck / head
@@ -1219,7 +1221,7 @@ class PtTransformer(nn.Module):
 
         # location generator: points
         self.point_generator = make_generator(
-            'point',
+            'aformerpoint', # we insert a aformer version
             **{
                 'max_seq_len' : max_seq_len * max_buffer_len_factor,
                 'fpn_strides' : self.fpn_strides,
