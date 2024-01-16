@@ -4,8 +4,8 @@ echo "start training"
 # python train.py ./configs/anet_i3d_aformer.yaml --output aformer200
 # python train.py ./configs/anet_i3d.yaml --output pretrained
 echo "start testing..."
-# python eval.py ./configs/anet_i3d.yaml ckpt/anet_i3d_tridet200/epoch_014.pth.tar
-python eval.py ./configs/anet_i3d_aformer.yaml ckpt/anet_i3d_aformer_aformer200/epoch_014.pth.tar
+python eval.py ./configs/anet_i3d.yaml ckpt/anet_i3d_tridet200/epoch_014.pth.tar
+# python eval.py ./configs/anet_i3d_aformer.yaml ckpt/anet_i3d_aformer_aformer200/epoch_014.pth.tar
 
 << results
 
@@ -37,27 +37,28 @@ Avearge mAP: 36.03 (%)
 
 
 tridet200 classes
-|tIoU = 0.50: mAP = 46.31 (%)
-|tIoU = 0.55: mAP = 43.40 (%)
-|tIoU = 0.60: mAP = 40.66 (%)
-|tIoU = 0.65: mAP = 37.52 (%)
-|tIoU = 0.70: mAP = 33.95 (%)
-|tIoU = 0.75: mAP = 29.88 (%)
-|tIoU = 0.80: mAP = 25.29 (%)
-|tIoU = 0.85: mAP = 19.87 (%)
-|tIoU = 0.90: mAP = 13.69 (%)
-|tIoU = 0.95: mAP = 5.86 (%)
-Avearge mAP: 29.64 (%)
+|tIoU = 0.50: mAP = 48.06 (%)
+|tIoU = 0.55: mAP = 44.98 (%)
+|tIoU = 0.60: mAP = 42.16 (%)
+|tIoU = 0.65: mAP = 38.87 (%)
+|tIoU = 0.70: mAP = 35.23 (%)
+|tIoU = 0.75: mAP = 31.12 (%)
+|tIoU = 0.80: mAP = 26.29 (%)
+|tIoU = 0.85: mAP = 20.63 (%)
+|tIoU = 0.90: mAP = 14.10 (%)
+|tIoU = 0.95: mAP = 5.80 (%)
+Avearge mAP: 30.72 (%)
+
 
 aformer200
-|tIoU = 0.50: mAP = 44.96 (%)
-|tIoU = 0.55: mAP = 42.36 (%)
-|tIoU = 0.60: mAP = 39.63 (%)
-|tIoU = 0.65: mAP = 36.83 (%)
-|tIoU = 0.70: mAP = 33.62 (%)
-|tIoU = 0.75: mAP = 30.50 (%)
-|tIoU = 0.80: mAP = 26.08 (%)
-|tIoU = 0.85: mAP = 21.38 (%)
-|tIoU = 0.90: mAP = 14.78 (%)
-|tIoU = 0.95: mAP = 6.29 (%)
-Avearge mAP: 29.64 (%)
+|tIoU = 0.50: mAP = 46.48 (%)
+|tIoU = 0.55: mAP = 43.75 (%)
+|tIoU = 0.60: mAP = 40.87 (%)
+|tIoU = 0.65: mAP = 38.12 (%)
+|tIoU = 0.70: mAP = 34.75 (%)
+|tIoU = 0.75: mAP = 31.39 (%)
+|tIoU = 0.80: mAP = 27.06 (%)
+|tIoU = 0.85: mAP = 22.04 (%)
+|tIoU = 0.90: mAP = 15.15 (%)
+|tIoU = 0.95: mAP = 6.48 (%)
+Avearge mAP: 30.61 (%)

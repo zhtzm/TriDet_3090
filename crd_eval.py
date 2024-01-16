@@ -18,6 +18,78 @@ from libs.datasets import make_dataset, make_data_loader
 from libs.modeling import make_meta_arch
 from libs.utils import sub_valid_one_epoch, ANETdetection, fix_random_seed
 
+def snippet_mAP(results, gt):
+
+    Acc = []
+    Attn = []
+
+    print(results.keys()) # dict_keys(['video-id', 't-start', 't-end', 'label', 'score'])
+
+    print(len(results['video-id']))
+    print(len(results['label']))
+    exit()
+    # gt = gt.groupby('video-id')
+    # results = results.groupby('video-id')
+
+    # print(results[0].shape)
+
+    class_mapping = {29:3,65:10,70:11,79:12,68:13,127:14,153:15,41:18} # a2t 测试thumos2anet
+    # class_mapping = {3:29,10:65,11:70,12:79,13:68,14:127,15:153,18:41} # t2a 测试anet2thumos
+
+    for vname in results['video_id']:
+        cas = results["labels"]
+
+        attn = results[vname]["attn"]
+        proposals = gt[gt["video-id"] == vname]
+
+        gt_p = torch.zeros_like(cas) + 100
+
+        for index, row in proposals.iterrows():
+            start = row["t-start"]
+            end = row["t-end"]
+            label = row["label"]
+            if start >= cas.size(1):
+                continue
+
+            if end >= cas.size(1):
+                end = cas.size(1)-1
+            
+            for t in range(start, end+1):
+                gt_p[:,t,0] = class_mapping[label]
+                # print(label)
+        
+        for t in range(cas.size(1)):
+            if gt_p[:,t,0] == 20: # 是否考虑后景
+                continue
+            if cas[:,t,0] == gt_p[:,t,0]:
+                Acc.append(1)
+            else:
+                Acc.append(0)
+            Attn.append(attn[:,t,0])
+    print(sum(Attn)/len(Attn))
+    exit()
+    print(sum(Acc)/len(Acc)*100)
+
+    # Define the number of bins or intervals
+    num_bins = 10
+
+    # Initialize lists to store accuracy for each interval
+    accuracy_by_bin = []
+
+    # Initialize the bin edges
+    bin_edges = [0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1.0]
+    print(bin_edges)
+
+    # Calculate accuracy in each bin
+    for i in range(num_bins):
+        lower_bound = bin_edges[i]
+        upper_bound = bin_edges[i + 1]
+        in_bin = [Acc[j] for j in range(len(Attn)) if lower_bound <= Attn[j] < upper_bound]
+        accuracy = sum(in_bin) / len(in_bin) * 100 if len(in_bin) > 0 else 0
+        accuracy_by_bin.append(accuracy)
+    print(accuracy_by_bin)
+
+    exit()
 
 def main(args):
     if args.mode=="t2a":
@@ -126,7 +198,7 @@ def main_t2a(args):
     """6. Test the model (SmD test)"""
     print("\nSmD test: model {:s} ...".format(cfg['model_name']))
     start = time.time()
-    mAP = sub_valid_one_epoch(
+    mAP, results = sub_valid_one_epoch(
         val_loader,
         model,
         -1,
@@ -136,6 +208,8 @@ def main_t2a(args):
         tb_writer=None,
         print_freq=args.print_freq,
         target_class_list=t_index2name.keys(),
+        num_classes=20,
+        return_results=True,
     )
     end = time.time()
     # print("All done! Total time: {:0.2f} sec".format(end - start))
@@ -159,7 +233,7 @@ def main_t2a(args):
     print("\nCrD test: model {:s} ...".format(cfg['model_name']))
 
     start = time.time()
-    mAP = sub_valid_one_epoch(
+    mAP, results = sub_valid_one_epoch(
         crd_val_loader,
         model,
         -1,
@@ -169,9 +243,13 @@ def main_t2a(args):
         tb_writer=None,
         print_freq=args.print_freq,
         target_class_list=a_index2name.keys(),
-        t_index2a_index=t_index2a_index
+        t_index2a_index=t_index2a_index,
+        num_classes=20,
+        return_results=True,
     )
 
+    snippet_mAP(results, crd_det_eval.ground_truth)
+    exit()
 
     return
 
@@ -286,6 +364,7 @@ def main_a2t(args):
         tb_writer=None,
         print_freq=args.print_freq,
         target_class_list=t_index2name.keys(),
+        num_classes=200,
     )
     end = time.time()
     # print("All done! Total time: {:0.2f} sec".format(end - start))
@@ -317,7 +396,8 @@ def main_a2t(args):
         tb_writer=None,
         print_freq=args.print_freq,
         target_class_list=a_index2name.keys(),
-        t_index2a_index=t_index2a_index
+        t_index2a_index=t_index2a_index,
+        num_classes=200,
     )
 
 

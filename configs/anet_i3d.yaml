@@ -59,7 +59,7 @@ test_cfg: {
   max_seg_num: 200,
   min_score: 0.001,
   # score fusion
-  multiclass_nms: False,
+  multiclass_nms: True,
   nms_sigma: 0.70,
   # ext_score_file: /data0/lixunsong/Datasets/anet_1.3/annotations/cuhk_val_simp_share.json,
   duration_thresh: 0.1,

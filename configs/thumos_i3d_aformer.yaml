@@ -16,9 +16,12 @@ dataset: {
   max_seq_len: 2304,
 }
 model: {
+  "backbone_type": 'convTransformer',
   fpn_type: identity,
   max_buffer_len_factor: 6.0,
   n_mha_win_size: 19,
+  use_trident_head: False,
+  use_abs_pe: True,
 }
 opt: {
   learning_rate: 0.0001,

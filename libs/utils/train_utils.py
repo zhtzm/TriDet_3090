@@ -432,6 +432,8 @@ def sub_valid_one_epoch(
         print_freq=20,
         target_class_list=None,
         t_index2a_index=None,
+        num_classes=20,
+        return_results=False,
 ):
     """Test the model on the validation set"""
     # either evaluate the results or save the results
@@ -486,7 +488,7 @@ def sub_valid_one_epoch(
                             if int(l) in t_index2a_index.keys():
                                 output[vid_idx]['labels'][t] = t_index2a_index[int(l)]
                             else:
-                                output[vid_idx]['labels'][t] = 0
+                                output[vid_idx]['labels'][t] = num_classes
                     results['label'].append(output[vid_idx]['labels'])
                     results['score'].append(output[vid_idx]['scores'])
 
@@ -522,5 +524,8 @@ def sub_valid_one_epoch(
     # log mAP to tb_writer
     if tb_writer is not None:
         tb_writer.add_scalar('validation/mAP', mAP, curr_epoch)
-
-    return mAP
+    
+    if return_results:
+        return mAP, results
+    else:
+        return mAP

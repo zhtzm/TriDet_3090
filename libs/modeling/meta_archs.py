@@ -458,6 +458,9 @@ class TriDet(nn.Module):
         # fpn_masks: F list[B, 1, T_i] -> F List[B, T_i]
         fpn_masks = [x.squeeze(1) for x in fpn_masks]
 
+        print(out_cls_logits[0].size())
+        exit()
+
         # return loss during training
         if self.training:
             # generate segment/lable List[N x 2] / List[N] with length = B

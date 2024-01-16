@@ -1,3 +1,5 @@
+# python crd_eval.py ./configs/thumos_i3d_aformer.yaml ckpt/thumos_i3d_aformer/epoch_034.pth.tar t2a class_mapping/t2a_class_mapping.json ./configs/anet_i3d.yaml
+
 python crd_eval.py ./configs/thumos_i3d.yaml ckpt/thumos_i3d_tridet/epoch_039.pth.tar t2a class_mapping/t2a_class_mapping.json ./configs/anet_i3d.yaml
 
 << results
