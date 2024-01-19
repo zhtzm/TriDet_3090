@@ -49,7 +49,7 @@ class PointGenerator(nn.Module):
         assert max_seq_len % scale_factor ** (fpn_levels - 1) == 0
 
         # save params
-        self.max_seq_len = max_seq_len * 10
+        self.max_seq_len = max_seq_len   * 10
         self.fpn_levels = fpn_levels
         self.scale_factor = scale_factor
         self.regression_range = regression_range

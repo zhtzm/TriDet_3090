@@ -27,7 +27,6 @@ def snippet_mAP(results, gt):
 
     print(len(results['video-id']))
     print(len(results['label']))
-    exit()
     # gt = gt.groupby('video-id')
     # results = results.groupby('video-id')
 

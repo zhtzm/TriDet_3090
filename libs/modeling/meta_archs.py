@@ -424,10 +424,11 @@ class TriDet(nn.Module):
             return torch.cat([decoded_offset_left, decoded_offset_right], dim=-1)
 
     def forward(self, video_list):
-        # batch the video list into feats (B, C, T) and masks (B, 1, T)
+        # batch the video list into feats (B, C, T) and masks (B, 1, T) (True, False)
         batched_inputs, batched_masks = self.preprocessing(video_list)
 
         # forward the network (backbone -> neck -> heads)
+        # fpn_feats: (B, C, T) (B, C, T//2) (B, C, T//4) (B, C, T//8) (B, C, T//32) (B, C, T//64)
         feats, masks = self.backbone(batched_inputs, batched_masks)
         fpn_feats, fpn_masks = self.neck(feats, masks)
 
@@ -435,6 +436,7 @@ class TriDet(nn.Module):
         # this is used for computing the GT or decode the final results
         # points: List[T x 4] with length = # fpn levels
         # (shared across all samples in the mini-batch)
+        # points: (B, T, 4) (B, T//2, 4) ......
         points = self.point_generator(fpn_feats)
 
         # out_cls: List[B, #cls + 1, T_i]
@@ -457,9 +459,6 @@ class TriDet(nn.Module):
         out_offsets = [x.permute(0, 2, 1) for x in out_offsets]
         # fpn_masks: F list[B, 1, T_i] -> F List[B, T_i]
         fpn_masks = [x.squeeze(1) for x in fpn_masks]
-
-        print(out_cls_logits[0].size())
-        exit()
 
         # return loss during training
         if self.training:
