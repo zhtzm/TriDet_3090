@@ -49,7 +49,7 @@ class PointGenerator(nn.Module):
         assert max_seq_len % scale_factor ** (fpn_levels - 1) == 0
 
         # save params
-        self.max_seq_len = max_seq_len   * 10
+        self.max_seq_len = max_seq_len * 80 # 这里每次都要重新调整
         self.fpn_levels = fpn_levels
         self.scale_factor = scale_factor
         self.regression_range = regression_range
@@ -110,7 +110,7 @@ class AformerPointGenerator(nn.Module):
         assert len(regression_range) == fpn_levels
 
         # save params
-        self.max_seq_len = max_seq_len
+        self.max_seq_len = max_seq_len * 80 # 这里每次都要重新调整
         self.fpn_levels = fpn_levels
         self.fpn_strides = fpn_strides
         self.regression_range = regression_range
@@ -144,6 +144,8 @@ class AformerPointGenerator(nn.Module):
         pts_list = []
         feat_lens = [feat.shape[-1] for feat in feats]
         for feat_len, buffer_pts in zip(feat_lens, self.buffer_points):
+            if feat_len > buffer_pts.shape[0]:
+                print(feat_len, buffer_pts.shape[0])
             assert feat_len <= buffer_pts.shape[0], "Reached max buffer length for point generator"
             pts = buffer_pts[:feat_len, :]
             pts_list.append(pts)

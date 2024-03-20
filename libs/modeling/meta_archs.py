@@ -332,6 +332,20 @@ class TriDet(nn.Module):
             empty_cls=train_cfg['head_empty_cls']
         )
 
+        ############################################
+        '''
+        # classfication and regerssion heads
+        self.cls_head = ClsHead(
+            fpn_dim, head_dim, self.num_classes+1,
+            kernel_size=head_kernel_size,
+            prior_prob=self.train_cls_prior_prob,
+            with_ln=head_with_ln,
+            num_layers=head_num_layers,
+            empty_cls=train_cfg['head_empty_cls']
+        )
+        '''
+        ############################################
+
         if use_trident_head:
             self.start_head = ClsHead(
                 fpn_dim, head_dim, self.num_classes,
@@ -372,6 +386,39 @@ class TriDet(nn.Module):
         # useful for small mini-batch training
         self.loss_normalizer = train_cfg['init_loss_norm']
         self.loss_normalizer_momentum = 0.9
+
+
+        #############################################
+        import json
+        with open("/data0/lixunsong/Datasets/thumos/annotations/thumos14.json") as f:
+            self.gt = json.load(f)
+            maps = {3:29,10:65,11:70,12:79,13:86,14:127,15:153,18:41}
+            for video_id, video_data in self.gt["database"].items():
+                # Check if the video_data contains 'annotations' key
+                if 'annotations' in video_data:
+                    # Iterate over annotations in the 'annotations' list
+                    for annotation in video_data['annotations']:
+                        # Check if 'label_id' is present in the annotation
+                        if 'label_id' in annotation:
+                            # Update 'label_id' based on the mapping
+                            annotation['label_id'] = maps.get(annotation['label_id'], annotation['label_id'])
+        '''
+        with open("/data0/lixunsong/Datasets/anet_1.3/annotations/anet1.3_i3d_filtered.json") as f:
+            self.gt = json.load(f)
+
+            maps = {29:3,65:10,70:11,79:12,86:13,127:14,153:15,41:18}
+            for video_id, video_data in self.gt["database"].items():
+                # Check if the video_data contains 'annotations' key
+                if 'annotations' in video_data:
+                    # Iterate over annotations in the 'annotations' list
+                    for annotation in video_data['annotations']:
+                        # Check if 'label_id' is present in the annotation
+                        if 'label_id' in annotation:
+                            # Update 'label_id' based on the mapping
+                            annotation['label_id'] = maps.get(annotation['label_id'], annotation['label_id'])
+        '''
+        #############################################
+
 
     @property
     def device(self):
@@ -786,6 +833,18 @@ class TriDet(nn.Module):
                 cls_logits_per_vid, offsets_per_vid,
                 lb_logits_per_vid, rb_logits_per_vid
             )
+
+            #############################################
+            '''
+            self.visualize_single_video(
+                points, fpn_masks_per_vid,
+                cls_logits_per_vid, offsets_per_vid,
+                lb_logits_per_vid, rb_logits_per_vid,
+                vlen, vidx
+            )
+            '''
+            #############################################
+
             # pass through video meta info
             results_per_vid['video_id'] = vidx
             results_per_vid['fps'] = fps
@@ -794,6 +853,7 @@ class TriDet(nn.Module):
             results_per_vid['feat_num_frames'] = nframes
             results.append(results_per_vid)
 
+        # dict_keys(['segments', 'scores', 'labels', 'video_id', 'fps', 'duration', 'feat_stride', 'feat_num_frames'])
         # step 3: postprocssing
         results = self.postprocessing(results)
 
@@ -906,6 +966,7 @@ class TriDet(nn.Module):
             vlen = results_per_vid['duration']
             stride = results_per_vid['feat_stride']
             nframes = results_per_vid['feat_num_frames']
+            duration = results_per_vid['duration']
             # 1: unpack the results and move to CPU
             segs = results_per_vid['segments'].detach().cpu()
             scores = results_per_vid['scores'].detach().cpu()
@@ -933,10 +994,310 @@ class TriDet(nn.Module):
                 {'video_id': vidx,
                  'segments': segs,
                  'scores': scores,
-                 'labels': labels}
+                 'labels': labels,
+                 'duration': duration,}
             )
 
         return processed_results
+
+    @torch.no_grad()
+    def visualize_single_video(
+        self,
+        points,
+        fpn_masks,
+        out_cls_logits,
+        out_offsets,
+        lb_logits_per_vid, rb_logits_per_vid,
+        vlen, vidx,
+
+    ):
+        import matplotlib.pyplot as plt
+        import os
+        import numpy as np
+
+        base_dir = "outputs/a2t"
+
+        gt = self.gt["database"][vidx] # duration: xx annotations [  {'label_id' 'segment'}  ]
+
+        # points F (list) [T_i, 4]
+        # fpn_masks, out_*: F (List) [T_i, C]
+        segs_all = []
+        scores_all = []
+        cls_idxs_all = []
+
+        tot = -1
+
+        # loop over fpn levels
+        for cls_i, offsets_i, pts_i, mask_i, sb_cls_i, eb_cls_i in zip(
+                out_cls_logits, out_offsets, points, fpn_masks, lb_logits_per_vid, rb_logits_per_vid
+        ):
+            tot += 1
+            pred_prob = (cls_i.sigmoid() * mask_i.unsqueeze(-1)).flatten()
+
+            if tot == 5:
+                cls_output = cls_i.sigmoid() * mask_i.unsqueeze(-1)
+                duration = len(cls_output)
+            
+
+            # Apply filtering to make NMS faster following detectron2
+            # 1. Keep seg with confidence score > a threshold
+            keep_idxs1 = (pred_prob > self.test_pre_nms_thresh)
+            pred_prob = pred_prob[keep_idxs1]
+            topk_idxs = keep_idxs1.nonzero(as_tuple=True)[0]
+
+            # 2. Keep top k top scoring boxes only
+            num_topk = min(self.test_pre_nms_topk, topk_idxs.size(0))
+            pred_prob, idxs = pred_prob.sort(descending=True)
+            pred_prob = pred_prob[:num_topk].clone()
+            topk_idxs = topk_idxs[idxs[:num_topk]].clone()
+
+            # fix a warning in pytorch 1.9
+            pt_idxs = torch.div(
+                topk_idxs, self.num_classes, rounding_mode='floor'
+            )
+            cls_idxs = torch.fmod(topk_idxs, self.num_classes)
+
+            # 3. For efficiency, pad the boarder head with num_bins zeros (Pad left for start branch and Pad right
+            # for end branch). Then we re-arrange the output of boundary branch to [class_num, T, num_bins + 1 (the
+            # neighbour bin for each instant)]. In this way, the output can be directly added to the center offset
+            # later.
+            if self.use_trident_head:
+                # pad the boarder
+                x = (F.pad(sb_cls_i, (self.num_bins, 0), mode='constant', value=0)).unsqueeze(-1)  # pad left
+                x_size = list(x.size())  # cls_num, T+num_bins, 1
+                x_size[-1] = self.num_bins + 1
+                x_size[-2] = x_size[-2] - self.num_bins  # cls_num, T, num_bins + 1
+                x_stride = list(x.stride())
+                x_stride[-2] = x_stride[-1]
+
+                pred_start_neighbours = x.as_strided(size=x_size, stride=x_stride)
+
+                x = (F.pad(eb_cls_i, (0, self.num_bins), mode='constant', value=0)).unsqueeze(-1)  # pad right
+                pred_end_neighbours = x.as_strided(size=x_size, stride=x_stride)
+            else:
+                pred_start_neighbours = None
+                pred_end_neighbours = None
+
+            decoded_offsets = self.decode_offset(offsets_i, pred_start_neighbours, pred_end_neighbours)
+
+            # pick topk output from the prediction
+            if self.use_trident_head:
+                offsets = decoded_offsets[cls_idxs, pt_idxs]
+            else:
+                offsets = decoded_offsets[pt_idxs]
+
+            pts = pts_i[pt_idxs]
+
+            # 4. compute predicted segments (denorm by stride for output offsets)
+            seg_left = pts[:, 0] - offsets[:, 0] * pts[:, 3]
+            seg_right = pts[:, 0] + offsets[:, 1] * pts[:, 3]
+
+            pred_segs = torch.stack((seg_left, seg_right), -1)
+
+            # 5. Keep seg with duration > a threshold (relative to feature grids)
+            seg_areas = seg_right - seg_left
+            keep_idxs2 = seg_areas > self.test_duration_thresh
+
+            # *_all : N (filtered # of segments) x 2 / 1
+            segs_all.append(pred_segs[keep_idxs2])
+            scores_all.append(pred_prob[keep_idxs2])
+            cls_idxs_all.append(cls_idxs[keep_idxs2])
+
+            if tot == 5:
+                if not os.path.exists(os.path.join(base_dir, vidx)):
+                    os.makedirs(os.path.join(base_dir, vidx))
+                
+                dir_path = os.path.join(base_dir, vidx)
+                real_l = int(sum(mask_i).cpu())
+
+                for i in range(200): # 20个class 第i+1 class
+                    data_for_class_i = cls_output[mask_i][:,i].cpu()
+
+                    ######################## cas
+                    plt.figure()
+                    has = False
+                    for seg in gt["annotations"]:
+                        if seg["label_id"] == i+1:
+                            x1 = seg["segment"][0]/gt["duration"]*real_l
+                            x2 = seg["segment"][1]/gt["duration"]*real_l
+                            plt.axvspan(x1, x2, facecolor='red', alpha=0.3)
+                            has = True
+                    if has == False:
+                        plt.close()
+                        continue
+                    plt.plot(np.array(data_for_class_i))
+                    plt.title(f'Class {i+1} Plot')
+                    plt.xlabel('Temporal')
+                    plt.ylabel('Values')
+
+                    plt.tight_layout()
+                    # Save the plot to the specified path
+                    plot_filename = os.path.join(dir_path, f'cls_{i+1}.png')
+                    plt.savefig(plot_filename)
+
+                    # Close the plot to free up resources
+                    plt.close()
+                    ########################
+
+                    '''
+                    ######################## start
+                    plt.figure()
+                    for seg in gt["annotations"]:
+                        if seg["label_id"] == i+1:
+                            x1 = seg["segment"][0]/gt["duration"]*real_l
+                            x2 = seg["segment"][1]/gt["duration"]*real_l
+                            plt.axvspan(x1, x2, facecolor='red', alpha=0.3)
+                    st = np.zeros(real_l)
+                    selected = cls_idxs_all[tot]==(i+1)
+                    sgs = segs_all[tot][selected]
+                    scs = scores_all[tot][selected]
+
+                    for k in range(len(sgs)): # sg in sgs:
+                        st[int(sgs[k][0])]+=scs[k]
+                    
+                    plt.plot(st,color="green")
+                    plt.title(f'Class {i+1} Start')
+                    plt.xlabel('Temporal')
+                    plt.ylabel('Values')
+
+                    plt.tight_layout()
+                    # Save the plot to the specified path
+                    plot_filename = os.path.join(dir_path, f'start_{i+1}.png')
+                    plt.savefig(plot_filename)
+
+                    # Close the plot to free up resources
+                    plt.close()
+                    ########################
+
+                    ######################## end
+                    plt.figure()
+                    for seg in gt["annotations"]:
+                        if seg["label_id"] == i+1:
+                            x1 = seg["segment"][0]/gt["duration"]*real_l
+                            x2 = seg["segment"][1]/gt["duration"]*real_l
+                            plt.axvspan(x1, x2, facecolor='red', alpha=0.3)
+                    st = np.zeros(real_l)
+                    selected = cls_idxs_all[tot]==(i+1)
+                    sgs = segs_all[tot][selected]
+                    scs = scores_all[tot][selected]
+
+                    for k in range(len(sgs)): # sg in sgs:
+                        st[min(int(sgs[k][1]), real_l-1)]+=scs[k]
+                    
+                    plt.plot(st,color="purple")
+                    plt.title(f'Class {i+1} End')
+                    plt.xlabel('Temporal')
+                    plt.ylabel('Values')
+
+                    plt.tight_layout()
+                    # Save the plot to the specified path
+                    plot_filename = os.path.join(dir_path, f'end_{i+1}.png')
+                    plt.savefig(plot_filename)
+
+                    # Close the plot to free up resources
+                    plt.close()
+                    ########################
+                    '''
+
+                    ######################## start-end
+                    plt.figure()
+                    for seg in gt["annotations"]:
+                        if seg["label_id"] == i+1:
+                            x1 = seg["segment"][0]/gt["duration"]*real_l
+                            x2 = seg["segment"][1]/gt["duration"]*real_l
+                            plt.axvspan(x1, x2, facecolor='red', alpha=0.3)
+                    st = np.zeros(real_l)
+                    ed = np.zeros(real_l)
+                    selected = cls_idxs_all[tot]==(i+1)
+                    sgs = segs_all[tot][selected]
+                    scs = scores_all[tot][selected]
+
+                    for k in range(len(sgs)): # sg in sgs:
+                        st[max(0,min(int(sgs[k][0]), real_l-1))]+=scs[k]
+                        ed[max(0,min(int(sgs[k][1]), real_l-1))]+=scs[k]
+                    
+                    plt.plot(st,color="purple",label="start")
+                    plt.plot(ed,color="green",label="end")
+                    plt.legend()
+                    plt.title(f'Class {i+1} Start-End')
+                    plt.xlabel('Temporal')
+                    plt.ylabel('Values')
+
+                    plt.tight_layout()
+                    # Save the plot to the specified path
+                    plot_filename = os.path.join(dir_path, f'start_end_{i+1}.png')
+                    plt.savefig(plot_filename)
+
+                    # Close the plot to free up resources
+                    plt.close()
+
+                    ######################## segments
+                    '''
+                    plt.figure()
+                    for seg in gt["annotations"]:
+                        if seg["label_id"] == i+1:
+                            x1 = seg["segment"][0]/gt["duration"]*real_l
+                            x2 = seg["segment"][1]/gt["duration"]*real_l
+                            plt.axvspan(x1, x2, facecolor='red', alpha=0.3)
+                    selected = cls_idxs_all[tot]==(i+1)
+                    # no prediction
+
+                    sgs = segs_all[tot][selected].cpu()
+                    scs = scores_all[tot][selected].cpu()
+
+                    combined = list(zip(sgs, scs))
+
+                    # Sort the combined list based on the values in scs in descending order
+                    combined.sort(key=lambda x: x[1], reverse=True)
+
+                    # Unzip the sorted list back into separate sgs and scs lists
+                    if len(combined) == 0:
+                        plt.title(f'Class {i+1} Segments')
+                        plt.xlabel('Temporal')
+                        plt.ylabel('Scores')
+
+                        plt.tight_layout()
+                        # Save the plot to the specified path
+                        plot_filename = os.path.join(dir_path, f'seg_{i+1}.png')
+                        plt.savefig(plot_filename)
+
+                        # Close the plot to free up resources
+                        plt.close()
+                        continue
+                    
+                    sgs, scs = zip(*combined)
+
+                    sgs = list(sgs)
+                    scs = list(scs)
+
+                    # Plot line segments
+                    for k in range(min(len(sgs),30)):
+                        plt.plot([sgs[k][0], sgs[k][1]], [scs[k], scs[k]], color='darkgreen')
+
+                    plt.title(f'Class {i+1} Segments')
+                    plt.xlabel('Temporal')
+                    plt.ylabel('Scores')
+
+                    plt.tight_layout()
+                    # Save the plot to the specified path
+                    plot_filename = os.path.join(dir_path, f'seg_{i+1}.png')
+                    plt.savefig(plot_filename)
+
+                    # Close the plot to free up resources
+                    plt.close()
+                    '''
+                    ########################
+
+        # cat along the FPN levels (F N_i, C)
+        segs_all, scores_all, cls_idxs_all = [
+            torch.cat(x) for x in [segs_all, scores_all, cls_idxs_all]
+        ]
+
+        results = {'segments': segs_all,
+                   'scores': scores_all,
+                   'labels': cls_idxs_all}
+
+        return results
 
 
 class PtTransformerClsHead(nn.Module):

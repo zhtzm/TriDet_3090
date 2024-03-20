@@ -192,8 +192,6 @@ def main_t2a(args):
         )
     else:
         output_file = os.path.join(os.path.split(ckpt_file)[0], 'eval_results.pkl')
-
-    '''
     """6. Test the model (SmD test)"""
     print("\nSmD test: model {:s} ...".format(cfg['model_name']))
     start = time.time()
@@ -212,7 +210,6 @@ def main_t2a(args):
     )
     end = time.time()
     # print("All done! Total time: {:0.2f} sec".format(end - start))
-    '''
 
     """7. Test the model (CrD test)"""
     # CrD test
@@ -246,9 +243,6 @@ def main_t2a(args):
         num_classes=20,
         return_results=True,
     )
-
-    snippet_mAP(results, crd_det_eval.ground_truth)
-    exit()
 
     return
 

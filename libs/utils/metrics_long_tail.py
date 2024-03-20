@@ -4,6 +4,7 @@ import os
 import json
 import pandas as pd
 import numpy as np
+from copy import deepcopy
 from joblib import Parallel, delayed
 from typing import List
 from typing import Tuple
@@ -106,24 +107,26 @@ def load_pred_seg_from_json(json_file, label='label_id', label_offset=0):
     return pred_base
 
 
-class ANETdetection(object):
-    """Adapted from https://github.com/activitynet/ActivityNet/blob/master/Evaluation/eval_detection.py"""
-
+class ANETdetectionLongTail(object):
+    DEFALUT_RANGE = {"short": [0, 5],
+                     "middle": [5, 15],
+                     "long": [15, float('inf')],
+                     "full": [0, float('inf')]}
+    
     def __init__(
             self,
             ant_file,
             split=None,
             tiou_thresholds=np.linspace(0.1, 0.5, 5),
+            range=DEFALUT_RANGE,
             label='label_id',
             label_offset=0,
             num_workers=8,
             dataset_name=None,
-            target_class_list=None,
     ):
-
-        self.target_class_list = target_class_list
+        self.range = range
         self.tiou_thresholds = tiou_thresholds
-        self.ap = None
+        self.mAP = None
         self.num_workers = num_workers
         if dataset_name is not None:
             self.dataset_name = dataset_name
@@ -134,11 +137,8 @@ class ANETdetection(object):
         self.split = split
         self.ground_truth = load_gt_seg_from_json(
             ant_file, split=self.split, label=label, label_offset=label_offset)
-        
-        if self.target_class_list is not None:
-            selected_indices = [idx for idx, item in enumerate(self.ground_truth["label"]) if item in self.target_class_list]
-            self.ground_truth = self.ground_truth.loc[selected_indices].reset_index(drop=True)
-            
+
+        # remove labels that does not exists in gt
         self.activity_index = {j: i for i, j in enumerate(sorted(self.ground_truth['label'].unique()))}
         self.ground_truth['label'] = self.ground_truth['label'].replace(self.activity_index)
 
@@ -156,27 +156,50 @@ class ANETdetection(object):
         except:
             print('Warning: No predictions of label \'%s\' were provdied.' % label_name)
             return pd.DataFrame()
+        
+    def get_range_preds_gts(self, preds_data, gt_data):
+        data_by_range = {}
+        data_by_range["full"] = (preds_data, gt_data)
+        for range_name, range_values in self.range.items():
+            if not range_name == "full":
+                min_l, max_l = range_values
+                filtered_gt = gt_data[(gt_data['t-end'] - gt_data['t-start'] > min_l) & (gt_data['t-end'] - gt_data['t-start'] <= max_l)]
+                contain_vedio = deepcopy(filtered_gt['video-id']).drop_duplicates()
+                filtered_pred = preds_data[preds_data['video-id'].isin(contain_vedio)]
+                data_by_range[range_name] = (filtered_pred, filtered_gt)
+        return data_by_range
 
-    def wrapper_compute_average_precision(self, preds):
+    def wrapper_compute_average_precision(self, preds, gt):
         """Computes average precision for each class in the subset.
         """
         ap = np.zeros((len(self.tiou_thresholds), len(self.activity_index)))
+        keep_columns = np.ones(ap.shape[1], dtype=bool)
 
         # Adaptation to query faster
-        ground_truth_by_label = self.ground_truth.groupby('label')
+        ground_truth_by_label = gt.groupby('label')
         prediction_by_label = preds.groupby('label')
 
-        results = Parallel(n_jobs=self.num_workers)(
-            delayed(compute_average_precision_detection)(
-                ground_truth=ground_truth_by_label.get_group(cidx).reset_index(drop=True),
-                prediction=self._get_predictions_with_label(prediction_by_label, label_name, cidx),
-                tiou_thresholds=self.tiou_thresholds,
-            ) for label_name, cidx in self.activity_index.items())
+        results = []
+        for label_name, cidx in self.activity_index.items():
+            try:
+                gt_group = ground_truth_by_label.get_group(cidx).reset_index(drop=True)
+                pred = self._get_predictions_with_label(prediction_by_label, label_name, cidx)
+                result = compute_average_precision_detection(
+                    ground_truth=gt_group,
+                    prediction=pred,
+                    tiou_thresholds=self.tiou_thresholds,
+                )
+                results.append(result)
+            except KeyError:
+                keep_columns[cidx] = False
+                results.append(None)
 
         for i, cidx in enumerate(self.activity_index.values()):
-            ap[:, cidx] = results[i]
+            if results[i] is not None:
+                ap[:, cidx] = results[i]
 
-        return ap
+        filtered_ap = ap[:, keep_columns]
+        return filtered_ap
 
     def evaluate(self, preds, verbose=True):
         """Evaluates a prediction file. For the detection task we measure the
@@ -201,15 +224,25 @@ class ANETdetection(object):
                 'score': preds['score'].tolist()
             })
         # always reset ap
-        self.ap = None
+        self.mAP = {}
 
         # make the label ids consistent
         preds['label'] = preds['label'].replace(self.activity_index)
 
+        datas = self.get_range_preds_gts(deepcopy(preds), deepcopy(self.ground_truth))
+
         # compute mAP
-        self.ap = self.wrapper_compute_average_precision(preds)
-        mAP = self.ap.mean(axis=1)
-        average_mAP = mAP.mean()
+        for range_name, range_data in datas.items():
+            # range_ap = self.wrapper_compute_average_precision(range_data[0], range_data[1])
+            range_ap = self.wrapper_compute_average_precision(preds, range_data[1])
+            range_mAP = range_ap.mean(axis=1)
+            range_average_mAP = range_mAP.mean()
+            range_metrics = {}
+            for tiou, tiou_mAP in zip(self.tiou_thresholds, range_mAP):
+                tmp = "{:.2f}".format(tiou)
+                range_metrics[tmp] = tiou_mAP
+            range_metrics['avearge'] = range_average_mAP
+            self.mAP[range_name] = range_metrics
 
         # print results
         if verbose:
@@ -217,14 +250,14 @@ class ANETdetection(object):
             print('[RESULTS] Action detection results on {:s}.'.format(
                 self.dataset_name)
             )
-            block = ''
-            for tiou, tiou_mAP in zip(self.tiou_thresholds, mAP):
-                block += '\n|tIoU = {:.2f}: mAP = {:.2f} (%)'.format(tiou, tiou_mAP * 100)
-            print(block)
-            print('Avearge mAP: {:.2f} (%)'.format(average_mAP * 100))
+            for rn, mAP_value in self.mAP.items():
+                block = ''
+                for tiou, tiou_mAP in mAP_value.items():
+                    block += '{}|tIou:{}, mAP = {:.2f} (%)\n'.format(rn, tiou, tiou_mAP * 100)
+                print(block)
 
         # return the results
-        return mAP, average_mAP
+        return _, self.mAP
 
 
 def compute_average_precision_detection(

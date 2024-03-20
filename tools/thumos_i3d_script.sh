@@ -1,9 +1,10 @@
 #!/bin/bash
 
 echo "start training"
-CUDA_VISIBLE_DEVICES=$1 python train.py ./configs/thumos_i3d.yaml --output pretrained
+# CUDA_VISIBLE_DEVICES=$1 python train.py ./configs/thumos_i3d.yaml --output pretrained
 echo "start testing..."
-CUDA_VISIBLE_DEVICES=$1 python eval.py ./configs/thumos_i3d.yaml ckpt/thumos_i3d_pretrained/epoch_039.pth.tar
+# python eval.py ./configs/thumos_i3d.yaml ckpt/thumos_i3d_tridet/epoch_039.pth.tar
+python eval.py ./configs/thumos_i3d_aformer.yaml ckpt/thumos_i3d_aformer/epoch_034.pth.tar
 
 << results
 |tIoU = 0.10: mAP = 87.10 (%)

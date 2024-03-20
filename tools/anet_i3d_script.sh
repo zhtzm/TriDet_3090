@@ -4,8 +4,8 @@ echo "start training"
 # python train.py ./configs/anet_i3d_aformer.yaml --output aformer200
 # python train.py ./configs/anet_i3d.yaml --output pretrained
 echo "start testing..."
-python eval.py ./configs/anet_i3d.yaml ckpt/anet_i3d_tridet200/epoch_014.pth.tar
-# python eval.py ./configs/anet_i3d_aformer.yaml ckpt/anet_i3d_aformer_aformer200/epoch_014.pth.tar
+# python eval.py ./configs/anet_i3d.yaml ckpt/anet_i3d_tridet200/epoch_014.pth.tar
+python eval.py ./configs/anet_i3d_aformer.yaml ckpt/anet_i3d_aformer_aformer200/epoch_014.pth.tar
 
 << results
 

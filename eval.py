@@ -15,7 +15,7 @@ import torch.utils.data
 from libs.core import load_config
 from libs.datasets import make_dataset, make_data_loader
 from libs.modeling import make_meta_arch
-from libs.utils import valid_one_epoch, ANETdetection, fix_random_seed
+from libs.utils import valid_one_epoch, ANETdetection, fix_random_seed, ANETdetectionLongTail
 
 
 ################################################################################
@@ -74,7 +74,7 @@ def main(args):
     det_eval, output_file = None, None
     if not args.saveonly:
         val_db_vars = val_dataset.get_attributes()
-        det_eval = ANETdetection(
+        det_eval = ANETdetectionLongTail(
             val_dataset.json_file,
             val_dataset.split[0],
             tiou_thresholds=val_db_vars['tiou_thresholds']

@@ -165,7 +165,7 @@ if __name__ == '__main__':
                         help='path to a config file')
     parser.add_argument('-p', '--print-freq', default=10, type=int,
                         help='print frequency (default: 10 iterations)')
-    parser.add_argument('-c', '--ckpt-freq', default=5, type=int,
+    parser.add_argument('-c', '--ckpt-freq', default=1, type=int,
                         help='checkpoint frequency (default: every 5 epochs)')
     parser.add_argument('--output', default='', type=str,
                         help='name of exp folder (default: none)')

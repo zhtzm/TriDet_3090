@@ -3,6 +3,7 @@ import pickle
 import random
 import time
 from copy import deepcopy
+import json
 
 import numpy as np
 import torch
@@ -429,7 +430,7 @@ def sub_valid_one_epoch(
         evaluator=None,
         output_file=None,
         tb_writer=None,
-        print_freq=20,
+        print_freq=100,
         target_class_list=None,
         t_index2a_index=None,
         num_classes=20,
@@ -449,7 +450,8 @@ def sub_valid_one_epoch(
         't-start': [],
         't-end': [],
         'label': [],
-        'score': []
+        'score': [],
+        'duration': [],
     }
 
     # loop over validation set
@@ -482,7 +484,6 @@ def sub_valid_one_epoch(
                     results['t-start'].append(output[vid_idx]['segments'][:, 0])
                     results['t-end'].append(output[vid_idx]['segments'][:, 1])
                     if t_index2a_index!=None:
-                        # print(output[vid_idx]['labels'])
                         for t in range(len(output[vid_idx]['labels'])):
                             l = output[vid_idx]['labels'][t]
                             if int(l) in t_index2a_index.keys():
@@ -491,18 +492,7 @@ def sub_valid_one_epoch(
                                 output[vid_idx]['labels'][t] = num_classes
                     results['label'].append(output[vid_idx]['labels'])
                     results['score'].append(output[vid_idx]['scores'])
-
-        # printing
-        if (iter_idx != 0) and iter_idx % (print_freq) == 0:
-            # measure elapsed time (sync all kernels)
-            torch.cuda.synchronize()
-            batch_time.update((time.time() - start) / print_freq)
-            start = time.time()
-
-            # print timing
-            print('Test: [{0:05d}/{1:05d}]\t'
-                  'Time {batch_time.val:.2f} ({batch_time.avg:.2f})'.format(
-                iter_idx, len(val_loader), batch_time=batch_time))
+                    # results['duration'].append(output[vid_idx]['duration'])
 
     # gather all stats and evaluate
     results['t-start'] = torch.cat(results['t-start']).numpy()
@@ -511,8 +501,10 @@ def sub_valid_one_epoch(
     results['score'] = torch.cat(results['score']).numpy()
 
     if evaluator is not None:
+        '''
         if (ext_score_file is not None) and isinstance(ext_score_file, str): # 这里我们不使用ext_score_file
             results = postprocess_results(results, ext_score_file)
+        '''
         # call the evaluator
         _, mAP = evaluator.evaluate(results, verbose=True)
     else:
