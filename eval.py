@@ -56,6 +56,7 @@ def main(args):
     # model
     model = make_meta_arch(cfg['model_name'], **cfg['model'])
     # not ideal for multi GPU training, ok for now
+    os.environ['CUDA_VISIBLE_DEVICES'] = '2'
     model = nn.DataParallel(model, device_ids=cfg['devices'])
 
     """4. load ckpt"""
@@ -77,7 +78,11 @@ def main(args):
         det_eval = ANETdetectionLongTail(
             val_dataset.json_file,
             val_dataset.split[0],
-            tiou_thresholds=val_db_vars['tiou_thresholds']
+            tiou_thresholds=val_db_vars['tiou_thresholds'],
+            range={"short": [0, 2],
+                    "middle": [2, 4.8],
+                    "long": [4.8, float('inf')],
+                    "full": [0, float('inf')]}
         )
     else:
         output_file = os.path.join(os.path.split(ckpt_file)[0], 'eval_results.pkl')

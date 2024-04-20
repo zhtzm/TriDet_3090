@@ -112,9 +112,9 @@ class SGPBackbone(nn.Module):
             # add pe to x
             x = x + pe[:, :, :T] * mask.to(x.dtype)
 
-        # stem network
+        # stem network 这里是SGP block
         for idx in range(len(self.stem)):
-            x, mask = self.stem[idx](x, mask)
+            x, mask = self.stem[idx](x, mask) # (B,C,T) (B,1,T)
 
         # prep for outputs
         out_feats = tuple()

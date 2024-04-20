@@ -39,7 +39,11 @@ def main(path, name):
     long_seg = seg_lens[2 * one_third:]
     middle_seg = seg_lens[one_third:2 * one_third]
     short_seg = seg_lens[:one_third]
-    
+    print(long_seg[-1])
+    print(long_seg[0])
+    print(short_seg[0])
+    print(short_seg[-1])
+    exit(0)
     # Plot histograms for each segment category
     plt.hist(long_seg, bins=np.linspace(0, max_length, num=500), color='red', alpha=0.5, label='Long ({:.2f})'.format(sum(long_seg)/len(long_seg)))
     plt.hist(middle_seg, bins=np.linspace(0, max_length, num=500), color='orange', alpha=0.5, label='Middle ({:.2f})'.format(sum(middle_seg)/len(middle_seg)))

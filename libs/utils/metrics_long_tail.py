@@ -244,6 +244,7 @@ class ANETdetectionLongTail(object):
             range_metrics['avearge'] = range_average_mAP
             self.mAP[range_name] = range_metrics
 
+        blocks = []
         # print results
         if verbose:
             # print the results
@@ -255,9 +256,10 @@ class ANETdetectionLongTail(object):
                 for tiou, tiou_mAP in mAP_value.items():
                     block += '{}|tIou:{}, mAP = {:.2f} (%)\n'.format(rn, tiou, tiou_mAP * 100)
                 print(block)
+                blocks.append(block)
 
         # return the results
-        return _, self.mAP
+        return None, blocks
 
 
 def compute_average_precision_detection(
